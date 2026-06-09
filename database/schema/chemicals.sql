@@ -1,0 +1,1 @@
+-- Chemical catalog, suppliers, categories, and usage status schema placeholder.

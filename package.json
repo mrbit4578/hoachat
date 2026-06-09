@@ -1,0 +1,16 @@
+{
+  "name": "hoachat",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ZDHC chemical control monorepo",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

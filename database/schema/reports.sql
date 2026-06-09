@@ -1,0 +1,1 @@
+-- Reporting support objects for stock by lot.no, date, category, and compliance state.

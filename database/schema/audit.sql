@@ -1,0 +1,1 @@
+-- Audit trail schema placeholder for sensitive compliance and inventory changes.

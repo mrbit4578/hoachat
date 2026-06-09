@@ -1,0 +1,1 @@
+export const DEFAULT_LOT_SELECTION_POLICY = "FEFO_THEN_FIFO" as const;

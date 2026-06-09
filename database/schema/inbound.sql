@@ -1,0 +1,1 @@
+-- Inbound receipt headers, lines, import results, and lot creation schema placeholder.

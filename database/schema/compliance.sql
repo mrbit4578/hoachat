@@ -1,0 +1,1 @@
+-- ZDHC compliance status, evidence, and review history schema placeholder.

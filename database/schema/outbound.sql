@@ -1,0 +1,1 @@
+-- Outbound issue headers, lines, lot allocation, and validation schema placeholder.

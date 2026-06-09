@@ -1,0 +1,1 @@
+-- Inventory lots, available quantities, lot.no tracking, and stock ledger schema placeholder.
