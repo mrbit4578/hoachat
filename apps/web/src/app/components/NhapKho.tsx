@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Plus, Search, Trash2, Download, Upload, Package } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -10,6 +10,9 @@ import { ChemicalQuickSelect } from './ChemicalQuickSelect';
 
 const KHO_OPTIONS = ['Kho phụ liệu', 'Kho hóa chất', 'Kho thành phẩm', 'Kho vật tư'];
 const NGUON_NHAP = ['Nhập khẩu', 'Nội địa', 'Trả về từ sản xuất', 'Khác'];
+
+type NhapHeader = Pick<PhieuNhap, 'ngayNhap' | 'soPhieuNhap' | 'khoNhap' | 'nguonNhap' | 'nguoiNhap' | 'ghiChu'>;
+type NhapLine = Pick<PhieuNhap, 'maVatTu' | 'tenHoaChat' | 'nhaCC' | 'lotNo' | 'soLuong' | 'donViTinh' | 'hsd' | 'donGia'>;
 
 function today() {
   return new Date().toISOString().split('T')[0];
@@ -24,10 +27,16 @@ function genSoPhieu(prefix: string) {
   return `${prefix}${y}${m}${day}${seq}`;
 }
 
-const emptyForm = (): Omit<PhieuNhap, 'id'> => ({
+const emptyHeader = (): NhapHeader => ({
   ngayNhap: today(),
   soPhieuNhap: genSoPhieu('YNK'),
   khoNhap: 'Kho phụ liệu',
+  nguonNhap: 'Nội địa',
+  nguoiNhap: '',
+  ghiChu: '',
+});
+
+const emptyLine = (): NhapLine => ({
   maVatTu: '',
   tenHoaChat: '',
   nhaCC: '',
@@ -36,16 +45,15 @@ const emptyForm = (): Omit<PhieuNhap, 'id'> => ({
   donViTinh: 'KG',
   hsd: '',
   donGia: 0,
-  nguonNhap: 'Nội địa',
-  nguoiNhap: '',
-  ghiChu: '',
 });
 
 export function NhapKho() {
-  const { hoaChat, phieuNhap, addPhieuNhap, deletePhieuNhap, importPhieuNhap, settings } = useChemContext();
+  const { hoaChat, phieuNhap, addManyPhieuNhap, deletePhieuNhap, importPhieuNhap, settings } = useChemContext();
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<Omit<PhieuNhap, 'id'>>(emptyForm());
+  const [header, setHeader] = useState<NhapHeader>(emptyHeader());
+  const [line, setLine] = useState<NhapLine>(emptyLine());
+  const [lines, setLines] = useState<NhapLine[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filterMonth, setFilterMonth] = useState('');
 
@@ -66,9 +74,16 @@ export function NhapKho() {
     return list;
   }, [phieuNhap, search, filterMonth]);
 
+  function openCreate() {
+    setHeader(emptyHeader());
+    setLine(emptyLine());
+    setLines([]);
+    setShowForm(true);
+  }
+
   function selectChemical(maVatTu: string) {
     const hc = hoaChat.find(h => h.maVatTu === maVatTu);
-    setForm(f => ({
+    setLine(f => ({
       ...f,
       maVatTu,
       tenHoaChat: hc?.tenHoaChat ?? '',
@@ -77,14 +92,34 @@ export function NhapKho() {
     }));
   }
 
-  function submit() {
-    if (!form.maVatTu || !form.lotNo || form.soLuong <= 0 || !form.hsd) {
-      toast.error('Vui lòng điền đầy đủ: Mã VT, Lot No, Số lượng, HSD');
+  function addLine() {
+    if (!line.maVatTu || !line.lotNo || line.soLuong <= 0 || !line.hsd) {
+      toast.error('Vui lòng điền đủ mã VT, Lot No, số lượng và HSD cho dòng hàng');
       return;
     }
-    addPhieuNhap({ ...form, nguoiNhap: form.nguoiNhap || settings.nguoiLap });
-    toast.success(`Đã thêm phiếu nhập ${form.soPhieuNhap}`);
-    setForm(emptyForm());
+    setLines(prev => [...prev, line]);
+    setLine(emptyLine());
+  }
+
+  function submit() {
+    if (!header.ngayNhap || !header.soPhieuNhap || !header.khoNhap) {
+      toast.error('Vui lòng điền đủ thông tin phiếu nhập');
+      return;
+    }
+    if (lines.length === 0) {
+      toast.error('Vui lòng thêm ít nhất 1 mặt hàng vào phiếu');
+      return;
+    }
+    const items: Array<Omit<PhieuNhap, 'id'>> = lines.map(item => ({
+      ...header,
+      ...item,
+      nguoiNhap: header.nguoiNhap || settings.nguoiLap,
+    }));
+    addManyPhieuNhap(items);
+    toast.success(`Đã lưu phiếu nhập ${header.soPhieuNhap} với ${items.length} mặt hàng`);
+    setHeader(emptyHeader());
+    setLine(emptyLine());
+    setLines([]);
     setShowForm(false);
   }
 
@@ -118,7 +153,6 @@ export function NhapKho() {
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -133,18 +167,16 @@ export function NhapKho() {
         <Button size="sm" variant="outline" onClick={exportCSV}><Download size={14} /> Xuất CSV</Button>
         <input id="import-phieu-nhap" type="file" accept=".csv,.json" className="hidden" onChange={e => importFile(e.target.files?.[0] ?? null)} />
         <Button size="sm" variant="outline" onClick={() => document.getElementById('import-phieu-nhap')?.click()}><Upload size={14} /> Import</Button>
-        <Button size="sm" onClick={() => { setForm(emptyForm()); setShowForm(true); }}>
+        <Button size="sm" onClick={openCreate}>
           <Plus size={14} /> Tạo phiếu nhập
         </Button>
       </div>
 
-      {/* Summary */}
       <div className="flex gap-4 text-sm text-gray-500">
-        <span><span className="text-gray-800">{filtered.length}</span> phiếu nhập</span>
+        <span><span className="text-gray-800">{filtered.length}</span> dòng nhập</span>
         <span>Tổng: <span className="text-gray-800">{totalKG.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</span> KG</span>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -195,10 +227,9 @@ export function NhapKho() {
         </div>
       </div>
 
-      {/* Form Dialog */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
                 <Package size={16} className="text-blue-600" />
@@ -206,62 +237,113 @@ export function NhapKho() {
               <h2 className="text-gray-800">Tạo phiếu nhập kho</h2>
               <button onClick={() => setShowForm(false)} className="ml-auto text-gray-400 hover:text-gray-600">✕</button>
             </div>
-            <div className="p-6 grid grid-cols-2 gap-4">
-              <Field label="Ngày nhập *">
-                <Input type="date" value={form.ngayNhap} onChange={e => setForm(f => ({ ...f, ngayNhap: e.target.value }))} />
-              </Field>
-              <Field label="Số phiếu nhập">
-                <Input value={form.soPhieuNhap} onChange={e => setForm(f => ({ ...f, soPhieuNhap: e.target.value }))} />
-              </Field>
-              <Field label="Kho nhập">
-                <select className="w-full h-9 border rounded-md px-2 text-sm" value={form.khoNhap} onChange={e => setForm(f => ({ ...f, khoNhap: e.target.value }))}>
-                  {KHO_OPTIONS.map(k => <option key={k}>{k}</option>)}
-                </select>
-              </Field>
-              <ChemicalQuickSelect
-                chemicals={hoaChat.filter(h => h.active)}
-                maVatTu={form.maVatTu}
-                tenHoaChat={form.tenHoaChat}
-                onSelect={chemical => selectChemical(chemical.maVatTu)}
-              />
-              {form.tenHoaChat && (
-                <div className="col-span-2 bg-blue-50 rounded-lg px-3 py-2 text-xs text-blue-700">
-                  <strong>{form.tenHoaChat}</strong> | Nhà CC: {form.nhaCC} | ĐVT: {form.donViTinh}
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-3 gap-4">
+                <Field label="Ngày nhập *">
+                  <Input type="date" value={header.ngayNhap} onChange={e => setHeader(f => ({ ...f, ngayNhap: e.target.value }))} />
+                </Field>
+                <Field label="Số phiếu nhập">
+                  <Input value={header.soPhieuNhap} onChange={e => setHeader(f => ({ ...f, soPhieuNhap: e.target.value }))} />
+                </Field>
+                <Field label="Kho nhập">
+                  <select className="w-full h-9 border rounded-md px-2 text-sm" value={header.khoNhap} onChange={e => setHeader(f => ({ ...f, khoNhap: e.target.value }))}>
+                    {KHO_OPTIONS.map(k => <option key={k}>{k}</option>)}
+                  </select>
+                </Field>
+                <Field label="Nguồn nhập">
+                  <select className="w-full h-9 border rounded-md px-2 text-sm" value={header.nguonNhap} onChange={e => setHeader(f => ({ ...f, nguonNhap: e.target.value }))}>
+                    {NGUON_NHAP.map(n => <option key={n}>{n}</option>)}
+                  </select>
+                </Field>
+                <Field label="Người nhập">
+                  <Input value={header.nguoiNhap} onChange={e => setHeader(f => ({ ...f, nguoiNhap: e.target.value }))} placeholder={settings.nguoiLap} />
+                </Field>
+              </div>
+
+              <div className="border border-gray-200 rounded-xl p-4 space-y-4">
+                <div className="text-sm text-gray-700">Thêm mặt hàng vào phiếu</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <ChemicalQuickSelect
+                    chemicals={hoaChat.filter(h => h.active)}
+                    maVatTu={line.maVatTu}
+                    tenHoaChat={line.tenHoaChat}
+                    onSelect={chemical => selectChemical(chemical.maVatTu)}
+                  />
+                  {line.tenHoaChat && (
+                    <div className="self-end bg-blue-50 rounded-lg px-3 py-2 text-xs text-blue-700">
+                      <strong>{line.tenHoaChat}</strong> | Nhà CC: {line.nhaCC} | ĐVT: {line.donViTinh}
+                    </div>
+                  )}
+                  <Field label="Lot No *">
+                    <Input value={line.lotNo} onChange={e => setLine(f => ({ ...f, lotNo: e.target.value }))} placeholder="VD: 2606195100-015-E" />
+                  </Field>
+                  <Field label="Số lượng nhập *">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      value={line.soLuong || ''}
+                      onChange={e => setLine(f => ({ ...f, soLuong: parseFloat(e.target.value) || 0 }))}
+                    />
+                  </Field>
+                  <Field label="Ngày hết hạn (HSD) *">
+                    <Input type="date" value={line.hsd} onChange={e => setLine(f => ({ ...f, hsd: e.target.value }))} />
+                  </Field>
+                  <Field label="Đơn giá (VNĐ/ĐVT)">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={line.donGia || ''}
+                      onChange={e => setLine(f => ({ ...f, donGia: parseFloat(e.target.value) || 0 }))}
+                    />
+                  </Field>
                 </div>
-              )}
-              <Field label="Lot No *">
-                <Input value={form.lotNo} onChange={e => setForm(f => ({ ...f, lotNo: e.target.value }))} placeholder="VD: 2606195100-015-E" />
-              </Field>
-              <Field label="Số lượng nhập *">
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.001"
-                  value={form.soLuong || ''}
-                  onChange={e => setForm(f => ({ ...f, soLuong: parseFloat(e.target.value) || 0 }))}
-                />
-              </Field>
-              <Field label="Ngày hết hạn (HSD) *">
-                <Input type="date" value={form.hsd} onChange={e => setForm(f => ({ ...f, hsd: e.target.value }))} />
-              </Field>
-              <Field label="Đơn giá (VNĐ/ĐVT)">
-                <Input
-                  type="number"
-                  min="0"
-                  value={form.donGia || ''}
-                  onChange={e => setForm(f => ({ ...f, donGia: parseFloat(e.target.value) || 0 }))}
-                />
-              </Field>
-              <Field label="Nguồn nhập">
-                <select className="w-full h-9 border rounded-md px-2 text-sm" value={form.nguonNhap} onChange={e => setForm(f => ({ ...f, nguonNhap: e.target.value }))}>
-                  {NGUON_NHAP.map(n => <option key={n}>{n}</option>)}
-                </select>
-              </Field>
-              <Field label="Người nhập">
-                <Input value={form.nguoiNhap} onChange={e => setForm(f => ({ ...f, nguoiNhap: e.target.value }))} placeholder={settings.nguoiLap} />
-              </Field>
-              <Field label="Ghi chú" className="col-span-2">
-                <textarea className="w-full border rounded-md px-3 py-2 text-sm resize-none" rows={2} value={form.ghiChu} onChange={e => setForm(f => ({ ...f, ghiChu: e.target.value }))} />
+                <div className="flex justify-end">
+                  <Button size="sm" variant="outline" onClick={addLine}><Plus size={14} /> Thêm mặt hàng</Button>
+                </div>
+              </div>
+
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="px-4 py-2.5 bg-gray-50 text-sm text-gray-700">Danh sách mặt hàng ({lines.length})</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-white text-gray-500">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Mã VT</th>
+                        <th className="px-3 py-2 text-left">Tên hóa chất</th>
+                        <th className="px-3 py-2 text-left">Lot No</th>
+                        <th className="px-3 py-2 text-right">Số lượng</th>
+                        <th className="px-3 py-2 text-left">ĐVT</th>
+                        <th className="px-3 py-2 text-left">HSD</th>
+                        <th className="px-3 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lines.map((item, index) => (
+                        <tr key={`${item.maVatTu}-${item.lotNo}-${index}`} className="border-t border-gray-100">
+                          <td className="px-3 py-2 font-mono">{item.maVatTu}</td>
+                          <td className="px-3 py-2">{item.tenHoaChat}</td>
+                          <td className="px-3 py-2 font-mono">{item.lotNo}</td>
+                          <td className="px-3 py-2 text-right">{item.soLuong.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</td>
+                          <td className="px-3 py-2">{item.donViTinh}</td>
+                          <td className="px-3 py-2">{new Date(item.hsd).toLocaleDateString('vi-VN')}</td>
+                          <td className="px-3 py-2 text-right">
+                            <button onClick={() => setLines(prev => prev.filter((_, i) => i !== index))} className="p-1 text-gray-400 hover:text-red-500 rounded">
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {lines.length === 0 && (
+                        <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-400">Chưa có mặt hàng trong phiếu</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <Field label="Ghi chú">
+                <textarea className="w-full border rounded-md px-3 py-2 text-sm resize-none" rows={2} value={header.ghiChu} onChange={e => setHeader(f => ({ ...f, ghiChu: e.target.value }))} />
               </Field>
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
@@ -272,15 +354,14 @@ export function NhapKho() {
         </div>
       )}
 
-      {/* Delete confirm */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-gray-800 mb-2">Xác nhận xóa phiếu nhập</h3>
-            <p className="text-sm text-gray-500 mb-4">Thao tác này sẽ xóa phiếu nhập và ảnh hưởng đến tồn kho.</p>
+            <h3 className="text-gray-800 mb-2">Xác nhận xóa dòng nhập</h3>
+            <p className="text-sm text-gray-500 mb-4">Thao tác này sẽ xóa một dòng hàng của phiếu nhập và ảnh hưởng đến tồn kho.</p>
             <div className="flex justify-end gap-3">
               <Button variant="outline" size="sm" onClick={() => setDeleteId(null)}>Hủy</Button>
-              <Button variant="destructive" size="sm" onClick={() => { deletePhieuNhap(deleteId); setDeleteId(null); toast.success('Đã xóa phiếu nhập'); }}>Xóa</Button>
+              <Button variant="destructive" size="sm" onClick={() => { deletePhieuNhap(deleteId); setDeleteId(null); toast.success('Đã xóa dòng nhập'); }}>Xóa</Button>
             </div>
           </div>
         </div>

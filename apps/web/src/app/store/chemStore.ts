@@ -144,6 +144,14 @@ export function useChemStore() {
     });
   }, []);
 
+  const addManyPhieuNhap = useCallback((items: Array<Omit<PhieuNhap, 'id'>>) => {
+    setPhieuNhap(prev => {
+      const next = [...prev, ...items.map(item => ({ ...item, id: genId() }))];
+      save(KEYS.phieuNhap, next);
+      return next;
+    });
+  }, []);
+
   const deletePhieuNhap = useCallback((id: string) => {
     setPhieuNhap(prev => {
       const next = prev.filter(p => p.id !== id);
@@ -183,6 +191,14 @@ export function useChemStore() {
   const addPhieuXuat = useCallback((item: Omit<PhieuXuat, 'id'>) => {
     setPhieuXuat(prev => {
       const next = [...prev, { ...item, id: genId() }];
+      save(KEYS.phieuXuat, next);
+      return next;
+    });
+  }, []);
+
+  const addManyPhieuXuat = useCallback((items: Array<Omit<PhieuXuat, 'id'>>) => {
+    setPhieuXuat(prev => {
+      const next = [...prev, ...items.map(item => ({ ...item, id: genId() }))];
       save(KEYS.phieuXuat, next);
       return next;
     });
@@ -322,16 +338,16 @@ export function useChemStore() {
       warning: tons.filter(t => t.trangThaiHSD === 'WARNING').length,
       valid: tons.filter(t => t.trangThaiHSD === 'VALID').length,
       totalLots: tons.length,
-      totalNhapThang: phieuNhap.filter(p => {
+      totalNhapThang: new Set(phieuNhap.filter(p => {
         const d = new Date(p.ngayNhap);
         const now = new Date();
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }).length,
-      totalXuatThang: phieuXuat.filter(p => {
+      }).map(p => p.soPhieuNhap)).size,
+      totalXuatThang: new Set(phieuXuat.filter(p => {
         const d = new Date(p.ngayXuat);
         const now = new Date();
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }).length,
+      }).map(p => p.soPhieuXuat)).size,
     };
   }, [hoaChat, getTonKhoByLot, phieuNhap, phieuXuat]);
 
@@ -343,10 +359,12 @@ export function useChemStore() {
     importHoaChat,
     phieuNhap,
     addPhieuNhap,
+    addManyPhieuNhap,
     deletePhieuNhap,
     importPhieuNhap,
     phieuXuat,
     addPhieuXuat,
+    addManyPhieuXuat,
     deletePhieuXuat,
     importPhieuXuat,
     settings,
