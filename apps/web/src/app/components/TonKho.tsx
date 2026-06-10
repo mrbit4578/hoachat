@@ -56,14 +56,14 @@ export function TonKho() {
   }, [tonKho]);
 
   function exportCSV() {
-    const headers = ['MÃ£ VT', 'TÃªn hÃ³a cháº¥t', 'ÄVT', 'Lot No', 'HSD', 'Kho', 'Tá»•ng nháº­p', 'Tá»•ng xuáº¥t', 'Tá»“n lÃ´', 'Tráº¡ng thÃ¡i HSD', 'NgÃ y cÃ²n láº¡i', 'Cáº£nh bÃ¡o'];
+    const headers = ['Mã VT', 'Tên hóa chất', 'ĐVT', 'Lot No', 'HSD', 'Kho', 'Tổng nhập', 'Tổng xuất', 'Tồn lô', 'Trạng thái HSD', 'Ngày còn lại', 'Cảnh báo'];
     const rows = filtered.map(t => [
       t.maVatTu, t.tenHoaChat, t.donViTinh, t.lotNo,
       t.hsd, t.khoNhap, t.tongNhap, t.tongXuat, t.tonLo.toFixed(3),
       t.trangThaiHSD, t.soNgayConLai, t.canhBao,
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob(['ï»¿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = 'ton_kho_lot.csv'; a.click();
   }
@@ -73,11 +73,11 @@ export function TonKho() {
       {/* Status summary */}
       <div className="grid grid-cols-5 gap-3">
         {[
-          { label: 'LÃ´ háº¿t háº¡n', count: summary.expired, cls: 'border-red-200 bg-red-50', icon: <XCircle size={16} className="text-red-500" />, filter: 'EXPIRED' },
+          { label: 'Lô hết hạn', count: summary.expired, cls: 'border-red-200 bg-red-50', icon: <XCircle size={16} className="text-red-500" />, filter: 'EXPIRED' },
           { label: 'Cảnh báo <=30 ngày', count: summary.critical, cls: 'border-red-200 bg-red-50', icon: <AlertTriangle size={16} className="text-red-500" />, filter: 'CRITICAL' },
           { label: 'Cảnh báo <=15 ngày', count: summary.warning, cls: 'border-yellow-200 bg-yellow-50', icon: <AlertTriangle size={16} className="text-yellow-500" />, filter: 'WARNING' },
-          { label: 'LÃ´ cÃ²n háº¡n', count: summary.valid, cls: 'border-green-200 bg-green-50', icon: <CheckCircle2 size={16} className="text-green-500" />, filter: 'VALID' },
-          { label: 'Tá»•ng lÃ´ tá»“n', count: summary.total, cls: 'border-gray-200 bg-gray-50', icon: <Search size={16} className="text-gray-400" />, filter: '' },
+          { label: 'Lô còn hạn', count: summary.valid, cls: 'border-green-200 bg-green-50', icon: <CheckCircle2 size={16} className="text-green-500" />, filter: 'VALID' },
+          { label: 'Tổng lô tồn', count: summary.total, cls: 'border-gray-200 bg-gray-50', icon: <Search size={16} className="text-gray-400" />, filter: '' },
         ].map(card => (
           <button
             key={card.filter}
@@ -97,27 +97,27 @@ export function TonKho() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input className="pl-8 h-9 text-sm" placeholder="TÃ¬m mÃ£ VT, tÃªn HC, lot..." value={search} onChange={e => setSearch(e.target.value)} />
+          <Input className="pl-8 h-9 text-sm" placeholder="Tìm mã VT, tên HC, lot..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="h-9 border rounded-md px-2 text-sm text-gray-600 bg-white" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">Táº¥t cáº£ tráº¡ng thÃ¡i</option>
-          <option value="EXPIRED">Háº¾T Háº N</option>
+          <option value="">Tất cả trạng thái</option>
+          <option value="EXPIRED">HẾT HẠN</option>
           <option value="CRITICAL">Cảnh báo &lt;=30 ngày</option>
           <option value="WARNING">Cảnh báo &lt;=15 ngày</option>
-          <option value="VALID">CÃ’N Háº N</option>
+          <option value="VALID">CÒN HẠN</option>
         </select>
         <select className="h-9 border rounded-md px-2 text-sm text-gray-600 bg-white" value={filterKho} onChange={e => setFilterKho(e.target.value)}>
-          <option value="">Táº¥t cáº£ kho</option>
+          <option value="">Tất cả kho</option>
           {khoOptions.map(k => <option key={k}>{k}</option>)}
         </select>
         <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
           <input type="checkbox" checked={showZeroStock} onChange={e => setShowZeroStock(e.target.checked)} className="w-4 h-4" />
-          Hiá»ƒn thá»‹ lÃ´ háº¿t tá»“n
+          Hiển thị lô hết tồn
         </label>
-        <Button size="sm" variant="outline" onClick={exportCSV}><Download size={14} /> Xuáº¥t CSV</Button>
+        <Button size="sm" variant="outline" onClick={exportCSV}><Download size={14} /> Xuất CSV</Button>
       </div>
 
-      <div className="text-xs text-gray-400">{filtered.length} lÃ´</div>
+      <div className="text-xs text-gray-400">{filtered.length} lô</div>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -125,18 +125,18 @@ export function TonKho() {
           <table className="w-full text-xs">
             <thead className="bg-gray-50 text-gray-500 sticky top-0">
               <tr>
-                <th className="px-3 py-2.5 text-left">MÃ£ VT</th>
-                <th className="px-3 py-2.5 text-left">TÃªn hÃ³a cháº¥t</th>
-                <th className="px-3 py-2.5 text-left">ÄVT</th>
+                <th className="px-3 py-2.5 text-left">Mã VT</th>
+                <th className="px-3 py-2.5 text-left">Tên hóa chất</th>
+                <th className="px-3 py-2.5 text-left">ĐVT</th>
                 <th className="px-3 py-2.5 text-left">Lot No</th>
                 <th className="px-3 py-2.5 text-left">Kho</th>
                 <th className="px-3 py-2.5 text-left">HSD</th>
-                <th className="px-3 py-2.5 text-right">Tá»•ng nháº­p</th>
-                <th className="px-3 py-2.5 text-right">Tá»•ng xuáº¥t</th>
-                <th className="px-3 py-2.5 text-right">Tá»“n lÃ´</th>
-                <th className="px-3 py-2.5 text-center">NgÃ y cÃ²n láº¡i</th>
-                <th className="px-3 py-2.5 text-center">Tráº¡ng thÃ¡i HSD</th>
-                <th className="px-3 py-2.5 text-left">Cáº£nh bÃ¡o</th>
+                <th className="px-3 py-2.5 text-right">Tổng nhập</th>
+                <th className="px-3 py-2.5 text-right">Tổng xuất</th>
+                <th className="px-3 py-2.5 text-right">Tồn lô</th>
+                <th className="px-3 py-2.5 text-center">Ngày còn lại</th>
+                <th className="px-3 py-2.5 text-center">Trạng thái HSD</th>
+                <th className="px-3 py-2.5 text-left">Cảnh báo</th>
               </tr>
             </thead>
             <tbody>
@@ -167,7 +167,7 @@ export function TonKho() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={12} className="px-4 py-8 text-center text-gray-400">KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u</td></tr>
+                <tr><td colSpan={12} className="px-4 py-8 text-center text-gray-400">Không tìm thấy dữ liệu</td></tr>
               )}
             </tbody>
           </table>

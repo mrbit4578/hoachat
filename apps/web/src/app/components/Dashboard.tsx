@@ -79,18 +79,18 @@ export function Dashboard({ setPage }: DashboardProps) {
 
   const cards = [
     {
-      title: 'Tá»•ng hÃ³a cháº¥t',
+      title: 'Tổng hóa chất',
       value: summary.totalChemicals,
-      sub: `${summary.totalLots} lÃ´ Ä‘ang tá»“n`,
+      sub: `${summary.totalLots} lô đang tồn`,
       icon: <FlaskConical size={20} />,
       color: 'bg-blue-50 text-blue-600',
       border: 'border-blue-200',
       action: () => setPage('danh-muc'),
     },
     {
-      title: 'LÃ´ háº¿t háº¡n (cÃ²n tá»“n)',
+      title: 'Lô hết hạn (còn tồn)',
       value: summary.expired,
-      sub: 'Cáº§n xá»­ lÃ½ ngay',
+      sub: 'Cần xử lý ngay',
       icon: <XCircle size={20} />,
       color: 'bg-red-50 text-red-600',
       border: 'border-red-200',
@@ -115,27 +115,27 @@ export function Dashboard({ setPage }: DashboardProps) {
       action: () => setPage('ton-kho'),
     },
     {
-      title: 'LÃ´ cÃ²n háº¡n',
+      title: 'Lô còn hạn',
       value: summary.valid,
-      sub: 'Tráº¡ng thÃ¡i tá»‘t',
+      sub: 'Trạng thái tốt',
       icon: <CheckCircle2 size={20} />,
       color: 'bg-green-50 text-green-600',
       border: 'border-green-200',
       action: () => setPage('ton-kho'),
     },
     {
-      title: 'Phiáº¿u nháº­p thÃ¡ng nÃ y',
+      title: 'Phiếu nhập tháng này',
       value: summary.totalNhapThang,
-      sub: 'phiáº¿u nháº­p kho',
+      sub: 'phiếu nhập kho',
       icon: <PackagePlus size={20} />,
       color: 'bg-indigo-50 text-indigo-600',
       border: 'border-indigo-200',
       action: () => setPage('nhap-kho'),
     },
     {
-      title: 'Phiáº¿u xuáº¥t thÃ¡ng nÃ y',
+      title: 'Phiếu xuất tháng này',
       value: summary.totalXuatThang,
-      sub: 'phiáº¿u xuáº¥t kho',
+      sub: 'phiếu xuất kho',
       icon: <PackageMinus size={20} />,
       color: 'bg-purple-50 text-purple-600',
       border: 'border-purple-200',
@@ -169,31 +169,31 @@ export function Dashboard({ setPage }: DashboardProps) {
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <div className="flex items-center gap-2 text-gray-700">
               <ShieldAlert size={16} className="text-red-500" />
-              <span>Cáº£nh bÃ¡o lÃ´ hÃ³a cháº¥t</span>
+              <span>Cảnh báo lô hóa chất</span>
             </div>
             <button
               onClick={() => setPage('ton-kho')}
               className="text-xs text-teal-600 hover:underline"
             >
-              Xem táº¥t cáº£
+              Xem tất cả
             </button>
           </div>
           {alerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-gray-400">
               <CheckCircle2 size={32} className="text-green-400 mb-2" />
-              <span className="text-sm">KhÃ´ng cÃ³ cáº£nh bÃ¡o nÃ o</span>
+              <span className="text-sm">Không có cảnh báo nào</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500">
-                    <th className="px-4 py-2 text-left">MÃ£ VT</th>
-                    <th className="px-4 py-2 text-left">TÃªn hÃ³a cháº¥t</th>
-                    <th className="px-4 py-2 text-left">LÃ´ No</th>
-                    <th className="px-4 py-2 text-right">Tá»“n lÃ´</th>
+                    <th className="px-4 py-2 text-left">Mã VT</th>
+                    <th className="px-4 py-2 text-left">Tên hóa chất</th>
+                    <th className="px-4 py-2 text-left">Lô No</th>
+                    <th className="px-4 py-2 text-right">Tồn lô</th>
                     <th className="px-4 py-2 text-left">HSD</th>
-                    <th className="px-4 py-2 text-left">Tráº¡ng thÃ¡i</th>
+                    <th className="px-4 py-2 text-left">Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -224,8 +224,8 @@ export function Dashboard({ setPage }: DashboardProps) {
                           }`}
                         >
                           {a.trangThaiHSD === 'EXPIRED'
-                            ? `Háº¿t háº¡n ${Math.abs(a.soNgayConLai)} ngÃ y`
-                            : `CÃ²n ${a.soNgayConLai} ngÃ y`}
+                            ? `Hết hạn ${Math.abs(a.soNgayConLai)} ngày`
+                            : `Còn ${a.soNgayConLai} ngày`}
                         </span>
                       </td>
                     </tr>
@@ -240,7 +240,7 @@ export function Dashboard({ setPage }: DashboardProps) {
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100 text-gray-700">
             <TrendingUp size={16} className="text-teal-500" />
-            <span>HÃ³a cháº¥t theo ZDHC MRSL</span>
+            <span>Hóa chất theo ZDHC MRSL</span>
           </div>
           <div className="p-4">
             <ResponsiveContainer width="100%" height={180}>
@@ -283,7 +283,7 @@ export function Dashboard({ setPage }: DashboardProps) {
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100 text-gray-700">
           <BarChart3 size={16} className="text-teal-500" />
-          <span>Xu hÆ°á»›ng xuáº¥t nháº­p kho 6 thÃ¡ng (KG)</span>
+          <span>Xu hướng xuất nhập kho 6 tháng (KG)</span>
         </div>
         <div className="p-4">
           <ResponsiveContainer width="100%" height={200}>
@@ -293,8 +293,8 @@ export function Dashboard({ setPage }: DashboardProps) {
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
               <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="nhap" name="Nháº­p kho (KG)" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="xuat" name="Xuáº¥t kho (KG)" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="nhap" name="Nhập kho (KG)" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="xuat" name="Xuất kho (KG)" fill="#f59e0b" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
