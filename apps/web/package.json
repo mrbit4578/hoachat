@@ -1,10 +1,16 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "hoachat-desktop",
   "private": true,
   "version": "0.0.1",
+  "productName": "He thong kiem soat hoa chat",
+  "description": "ZDHC MRSL chemical control desktop app",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "build": "vite build",
+    "build:desktop": "vite build --mode desktop",
+    "desktop": "npm run build:desktop && electron .",
+    "dist:win": "npm run build:desktop && powershell -ExecutionPolicy Bypass -File scripts/build-user-installer.ps1 -Version 0.0.1",
     "dev": "vite"
   },
   "dependencies": {
@@ -68,6 +74,7 @@
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
     "tailwindcss": "4.1.12",
+    "electron": "latest",
     "vite": "6.3.5"
   },
   "peerDependencies": {
