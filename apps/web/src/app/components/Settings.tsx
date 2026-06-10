@@ -5,8 +5,10 @@ import { Input } from './ui/input';
 import { useChemContext } from '../store/ChemContext';
 import { toast } from 'sonner';
 import {
+  DEFAULT_DATABASE_MAX_BYTES,
   DEFAULT_DATABASE_PATH,
   DEFAULT_DATABASE_REPO,
+  DEFAULT_SYNC_INTERVAL_SECONDS,
   databaseBytes,
   downloadDatabase,
   formatBytes,
@@ -16,6 +18,16 @@ import {
 } from '../utils/dataPortability';
 
 const MRSL_VERSIONS = ['ZDHC MRSL v3.1', 'ZDHC MRSL v2.0', 'ZDHC MRSL v1.1'];
+const MB = 1024 * 1024;
+
+function clampDatabaseMaxBytes(value: unknown) {
+  const n = Number(value) || DEFAULT_DATABASE_MAX_BYTES / MB;
+  return Math.min(95, Math.max(1, n)) * MB;
+}
+
+function clampSyncInterval(value: unknown) {
+  return Math.max(5, Number(value) || DEFAULT_SYNC_INTERVAL_SECONDS);
+}
 
 export function Settings() {
   const { settings, updateSettings, replaceDatabase, getDatabaseSnapshot } = useChemContext();
@@ -23,11 +35,23 @@ export function Settings() {
   const [syncing, setSyncing] = useState(false);
   const snapshot = getDatabaseSnapshot();
   const dbBytes = databaseBytes(snapshot);
-  const dbLimit = 4 * 1024 * 1024;
+  const dbLimit = clampDatabaseMaxBytes(form.databaseMaxBytes || settings.databaseMaxBytes);
   const dbPercent = Math.min(100, Math.round((dbBytes / dbLimit) * 100));
+  const dbLimitMb = Math.round(dbLimit / MB);
+
+  function normalizedForm() {
+    return {
+      ...form,
+      databaseRepo: form.databaseRepo || DEFAULT_DATABASE_REPO,
+      databasePath: form.databasePath || DEFAULT_DATABASE_PATH,
+      autoSyncEnabled: form.autoSyncEnabled ?? true,
+      autoSyncIntervalSeconds: clampSyncInterval(form.autoSyncIntervalSeconds),
+      databaseMaxBytes: dbLimit,
+    };
+  }
 
   function save() {
-    updateSettings(form);
+    updateSettings(normalizedForm());
     toast.success('Đã lưu cài đặt');
   }
 
@@ -49,13 +73,14 @@ export function Settings() {
   async function pushGitHub() {
     try {
       setSyncing(true);
-      const nextSettings = {
-        ...form,
-        databaseRepo: form.databaseRepo || DEFAULT_DATABASE_REPO,
-        databasePath: form.databasePath || DEFAULT_DATABASE_PATH,
-      };
+      const nextSettings = normalizedForm();
+      const nextSnapshot = getDatabaseSnapshot();
+      if (databaseBytes(nextSnapshot) >= nextSettings.databaseMaxBytes) {
+        toast.error('Database đã vượt giới hạn đã cấu hình, hãy giảm dữ liệu hoặc tăng giới hạn trước khi push');
+        return;
+      }
       updateSettings(nextSettings);
-      await saveDatabaseToGitHub(getDatabaseSnapshot(), nextSettings);
+      await saveDatabaseToGitHub(nextSnapshot, nextSettings);
       toast.success('Đã lưu database lên GitHub');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'GitHub save failed');
@@ -67,12 +92,7 @@ export function Settings() {
   async function pullGitHub() {
     try {
       setSyncing(true);
-      const database = await loadDatabaseFromGitHub({
-        ...settings,
-        ...form,
-        databaseRepo: form.databaseRepo || DEFAULT_DATABASE_REPO,
-        databasePath: form.databasePath || DEFAULT_DATABASE_PATH,
-      });
+      const database = await loadDatabaseFromGitHub(normalizedForm());
       replaceDatabase(database);
       toast.success('Đã tải database từ GitHub');
     } catch (error) {
@@ -145,12 +165,44 @@ export function Settings() {
             type="password"
             value={form.githubToken || ''}
             onChange={e => setForm(f => ({ ...f, githubToken: e.target.value }))}
-            placeholder="Fine-grained token co quyen Contents: Read/Write"
+            placeholder="Fine-grained token có quyền Contents: Read/Write"
           />
         </Field>
-        <div className="text-xs text-gray-500">
-          Khi đã lưu token, dữ liệu nhập/xóa/import sẽ tự đồng bộ lên GitHub sau vài giây; nút Push dùng để lưu thủ công ngay lập tức.
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Chu kỳ đồng bộ (giây)">
+            <Input
+              type="number"
+              min="5"
+              value={form.autoSyncIntervalSeconds || DEFAULT_SYNC_INTERVAL_SECONDS}
+              onChange={e => setForm(f => ({ ...f, autoSyncIntervalSeconds: Number(e.target.value) || DEFAULT_SYNC_INTERVAL_SECONDS }))}
+            />
+          </Field>
+          <Field label="Giới hạn database (MB)">
+            <Input
+              type="number"
+              min="1"
+              max="95"
+              value={dbLimitMb}
+              onChange={e => setForm(f => ({ ...f, databaseMaxBytes: clampDatabaseMaxBytes(e.target.value) }))}
+            />
+          </Field>
         </div>
+
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.autoSyncEnabled ?? true}
+            onChange={e => setForm(f => ({ ...f, autoSyncEnabled: e.target.checked }))}
+            className="w-4 h-4"
+          />
+          Bật đồng bộ tự động theo thời gian thực
+        </label>
+
+        <div className="text-xs text-gray-500">
+          Khi đã lưu token, dữ liệu nhập/xóa/import sẽ tự push lên GitHub sau vài giây và tự pull dữ liệu mới từ GitHub theo chu kỳ đã đặt. Token chỉ lưu trong trình duyệt hiện tại và không được ghi vào database.
+        </div>
+
         <div className="flex flex-wrap gap-3">
           <Button variant="outline" onClick={() => downloadDatabase(snapshot)}>
             <Download size={14} /> Export JSON
@@ -166,6 +218,7 @@ export function Settings() {
             <CloudUpload size={14} /> Push GitHub
           </Button>
         </div>
+
         <div className={`rounded-lg border p-3 text-xs ${dbPercent >= 90 ? 'bg-red-50 border-red-200 text-red-700' : dbPercent >= 75 ? 'bg-yellow-50 border-yellow-200 text-yellow-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
           <div className="flex items-center justify-between mb-2">
             <span>Dung lượng database hiện tại</span>
@@ -175,18 +228,18 @@ export function Settings() {
             <div className={`h-full ${dbPercent >= 90 ? 'bg-red-500' : dbPercent >= 75 ? 'bg-yellow-500' : 'bg-teal-500'}`} style={{ width: `${dbPercent}%` }} />
           </div>
           {dbPercent >= 75 && (
-            <div className="mt-2">Database gần đầy. Hãy export backup, xóa bớt phiếu cũ hoặc tách dữ liệu theo tháng/năm trước khi tiếp tục nhập nhiều dữ liệu.</div>
+            <div className="mt-2">Database gần đầy so với giới hạn đã đặt. Hãy export backup hoặc tách dữ liệu theo tháng/năm nếu tiếp tục nhập rất nhiều dữ liệu.</div>
           )}
         </div>
       </div>
 
       <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 text-sm text-blue-700">
-        <div className="mb-2">ℹ️ Thông tin về hệ thống</div>
+        <div className="mb-2">Thông tin về hệ thống</div>
         <ul className="space-y-1 text-xs text-blue-600 list-disc list-inside">
-          <li>Dữ liệu chạy offline bằng localStorage và có thể đồng bộ JSON lên GitHub</li>
-          <li>Hỗ trợ quản lý theo chuẩn ZDHC MRSL (CIL + Lot.No + FEFO)</li>
-          <li>Xuất dữ liệu CSV để tích hợp với ZDHC Gateway</li>
-          <li>Cảnh báo HSD: EXPIRED (quá hạn) | WARNING (≤90 ngày) | VALID (còn hạn)</li>
+          <li>Dữ liệu chạy offline trong trình duyệt và đồng bộ JSON lên GitHub khi có token ghi repo.</li>
+          <li>Người nhận link muốn cùng nhập dữ liệu cần có token GitHub hợp lệ hoặc dùng cùng một tài khoản đã được cấp quyền ghi repository.</li>
+          <li>Hỗ trợ quản lý theo chuẩn ZDHC MRSL, Lot.No và FEFO.</li>
+          <li>Cảnh báo HSD: hết hạn, còn ≤15 ngày, còn ≤30 ngày và còn hạn.</li>
         </ul>
       </div>
 

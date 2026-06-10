@@ -93,6 +93,9 @@ export interface AppSettings {
   databaseRepo?: string;
   databasePath?: string;
   githubToken?: string;
+  autoSyncEnabled?: boolean;
+  autoSyncIntervalSeconds?: number;
+  databaseMaxBytes?: number;
 }
 
 export interface AppDatabase {

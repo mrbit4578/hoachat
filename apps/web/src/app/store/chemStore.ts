@@ -1,8 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { HoaChat, PhieuNhap, PhieuXuat, TonKhoLot, AppSettings, AppDatabase } from '../types';
 import { sampleHoaChat, samplePhieuNhap, samplePhieuXuat, defaultSettings } from '../data/sampleData';
 import seedData from '../data/seedData.json';
-import { createDatabaseSnapshot, DEFAULT_DATABASE_PATH, DEFAULT_DATABASE_REPO } from '../utils/dataPortability';
+import {
+  createDatabaseSnapshot,
+  DEFAULT_DATABASE_MAX_BYTES,
+  DEFAULT_DATABASE_PATH,
+  DEFAULT_DATABASE_REPO,
+  DEFAULT_SYNC_INTERVAL_SECONDS,
+} from '../utils/dataPortability';
 
 const KEYS = {
   hoaChat: 'zdhc_hoa_chat',
@@ -11,6 +17,50 @@ const KEYS = {
   settings: 'zdhc_settings',
   seedVersion: 'zdhc_seed_version',
 };
+
+const IDB_NAME = 'zdhc_chemical_control';
+const IDB_STORE = 'records';
+
+function openIndexedDb() {
+  return new Promise<IDBDatabase | null>((resolve) => {
+    if (typeof indexedDB === 'undefined') {
+      resolve(null);
+      return;
+    }
+    const request = indexedDB.open(IDB_NAME, 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(IDB_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+  });
+}
+
+async function saveIndexed<T>(key: string, value: T) {
+  const db = await openIndexedDb();
+  if (!db) return;
+  await new Promise<void>((resolve) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve();
+    tx.onabort = () => resolve();
+  });
+  db.close();
+}
+
+async function loadIndexed<T>(key: string): Promise<T | null> {
+  const db = await openIndexedDb();
+  if (!db) return null;
+  const value = await new Promise<T | null>((resolve) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const request = tx.objectStore(IDB_STORE).get(key);
+    request.onsuccess = () => resolve((request.result as T | undefined) ?? null);
+    request.onerror = () => resolve(null);
+  });
+  db.close();
+  return value;
+}
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -24,6 +74,7 @@ function save<T>(key: string, value: T) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {}
+  saveIndexed(key, value).catch(() => {});
 }
 
 function genId() {
@@ -36,6 +87,9 @@ function withDefaultSettings(settings: AppSettings): AppSettings {
     databaseRepo: settings.databaseRepo || DEFAULT_DATABASE_REPO,
     databasePath: settings.databasePath || DEFAULT_DATABASE_PATH,
     githubToken: settings.githubToken || '',
+    autoSyncEnabled: settings.autoSyncEnabled ?? true,
+    autoSyncIntervalSeconds: settings.autoSyncIntervalSeconds || DEFAULT_SYNC_INTERVAL_SECONDS,
+    databaseMaxBytes: settings.databaseMaxBytes || DEFAULT_DATABASE_MAX_BYTES,
   };
 }
 
@@ -82,6 +136,27 @@ export function useChemStore() {
   const [phieuNhap, setPhieuNhap] = useState<PhieuNhap[]>(() => load(KEYS.phieuNhap, seedPhieuNhap));
   const [phieuXuat, setPhieuXuat] = useState<PhieuXuat[]>(() => load(KEYS.phieuXuat, seedPhieuXuat));
   const [settings, setSettings] = useState<AppSettings>(() => withDefaultSettings(load(KEYS.settings, seedSettings)));
+
+  useEffect(() => {
+    let cancelled = false;
+    async function hydrateFromIndexedDb() {
+      const [indexedHoaChat, indexedPhieuNhap, indexedPhieuXuat, indexedSettings] = await Promise.all([
+        loadIndexed<HoaChat[]>(KEYS.hoaChat),
+        loadIndexed<PhieuNhap[]>(KEYS.phieuNhap),
+        loadIndexed<PhieuXuat[]>(KEYS.phieuXuat),
+        loadIndexed<AppSettings>(KEYS.settings),
+      ]);
+      if (cancelled) return;
+      if (indexedHoaChat?.length) setHoaChat(indexedHoaChat);
+      if (indexedPhieuNhap) setPhieuNhap(indexedPhieuNhap);
+      if (indexedPhieuXuat) setPhieuXuat(indexedPhieuXuat);
+      if (indexedSettings) setSettings(withDefaultSettings(indexedSettings));
+    }
+    hydrateFromIndexedDb();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // HoaChat CRUD
   const addHoaChat = useCallback((item: Omit<HoaChat, 'id'>) => {

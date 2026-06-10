@@ -2,6 +2,8 @@ import type { AppDatabase, AppSettings, HoaChat, PhieuNhap, PhieuXuat } from '..
 
 export const DEFAULT_DATABASE_REPO = 'mrbit4578/hoachat';
 export const DEFAULT_DATABASE_PATH = 'data/hoachat-db.json';
+export const DEFAULT_DATABASE_MAX_BYTES = 95 * 1024 * 1024;
+export const DEFAULT_SYNC_INTERVAL_SECONDS = 10;
 
 type CsvValue = string | number | boolean | null | undefined;
 
@@ -147,6 +149,46 @@ export function createDatabaseSnapshot(input: {
   };
 }
 
+function mergeById<T extends { id: string }>(local: T[], remote: T[]) {
+  const map = new Map<string, T>();
+  remote.forEach(item => map.set(item.id, item));
+  local.forEach(item => map.set(item.id, item));
+  return Array.from(map.values());
+}
+
+export function mergeDatabaseSnapshots(local: AppDatabase, remote: AppDatabase): AppDatabase {
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    sourceRepository: local.sourceRepository || remote.sourceRepository || DEFAULT_DATABASE_REPO,
+    hoaChat: mergeById(local.hoaChat, remote.hoaChat),
+    phieuNhap: mergeById(local.phieuNhap, remote.phieuNhap),
+    phieuXuat: mergeById(local.phieuXuat, remote.phieuXuat),
+    settings: {
+      ...remote.settings,
+      ...local.settings,
+      githubToken: local.settings.githubToken || '',
+      databaseRepo: local.settings.databaseRepo || remote.settings.databaseRepo || DEFAULT_DATABASE_REPO,
+      databasePath: local.settings.databasePath || remote.settings.databasePath || DEFAULT_DATABASE_PATH,
+      autoSyncEnabled: local.settings.autoSyncEnabled ?? remote.settings.autoSyncEnabled ?? true,
+      autoSyncIntervalSeconds: local.settings.autoSyncIntervalSeconds || remote.settings.autoSyncIntervalSeconds || DEFAULT_SYNC_INTERVAL_SECONDS,
+      databaseMaxBytes: local.settings.databaseMaxBytes || remote.settings.databaseMaxBytes || DEFAULT_DATABASE_MAX_BYTES,
+    },
+  };
+}
+
+export function databaseContentFingerprint(snapshot: AppDatabase) {
+  return JSON.stringify({
+    hoaChat: snapshot.hoaChat,
+    phieuNhap: snapshot.phieuNhap,
+    phieuXuat: snapshot.phieuXuat,
+    settings: {
+      ...snapshot.settings,
+      githubToken: '',
+    },
+  });
+}
+
 export function downloadDatabase(snapshot: AppDatabase) {
   const stamp = new Date().toISOString().slice(0, 10);
   downloadText(`hoachat-db-${stamp}.json`, JSON.stringify(snapshot, null, 2), 'application/json;charset=utf-8');
@@ -175,9 +217,19 @@ export async function loadDatabaseFromGitHub(settings: AppSettings): Promise<App
 
   if (!res.ok) throw new Error(`GitHub load failed: ${res.status}`);
   const data = await res.json();
-  const raw = decodeURIComponent(
-    escape(window.atob(String(data.content ?? '').replace(/\n/g, '')))
-  );
+  let raw = '';
+  if (data.content) {
+    raw = decodeURIComponent(
+      escape(window.atob(String(data.content ?? '').replace(/\n/g, '')))
+    );
+  } else if (data.download_url) {
+    const rawRes = await fetch(String(data.download_url), {
+      headers: settings.githubToken ? { Authorization: `Bearer ${settings.githubToken}` } : undefined,
+    });
+    if (!rawRes.ok) throw new Error(`GitHub raw database load failed: ${rawRes.status}`);
+    raw = await rawRes.text();
+  }
+  if (!raw) throw new Error('GitHub database content is empty');
   return JSON.parse(raw) as AppDatabase;
 }
 
