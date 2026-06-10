@@ -14,6 +14,9 @@ import {
   Bell,
   FileText,
   TrendingUp,
+  Cloud,
+  CloudOff,
+  RefreshCw,
 } from 'lucide-react';
 import type { PageType } from '../types';
 import { useChemContext } from '../store/ChemContext';
@@ -52,9 +55,28 @@ interface LayoutProps {
 
 export function Layout({ currentPage, setPage, children }: LayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const { getSummary, settings } = useChemContext();
+  const { getSummary, settings, syncStatus, syncMessage, lastSyncedAt, syncNow } = useChemContext();
   const summary = getSummary();
   const alertCount = summary.expired + summary.critical + summary.warning;
+  const syncing = syncStatus === 'pulling' || syncStatus === 'pushing';
+  const syncClass =
+    syncStatus === 'synced'
+      ? 'bg-green-50 text-green-700'
+      : syncStatus === 'readonly'
+      ? 'bg-yellow-50 text-yellow-700'
+      : syncStatus === 'error'
+      ? 'bg-red-50 text-red-700'
+      : 'bg-blue-50 text-blue-700';
+  const syncLabel =
+    syncStatus === 'synced'
+      ? 'Đã đồng bộ'
+      : syncStatus === 'readonly'
+      ? 'Chỉ đọc'
+      : syncStatus === 'error'
+      ? 'Lỗi đồng bộ'
+      : syncing
+      ? 'Đang đồng bộ'
+      : 'Đồng bộ';
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -140,6 +162,15 @@ export function Layout({ currentPage, setPage, children }: LayoutProps) {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => syncNow()}
+              title={`${syncMessage}${lastSyncedAt ? ` - ${new Date(lastSyncedAt).toLocaleTimeString('vi-VN')}` : ''}`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs hover:opacity-90 transition-opacity ${syncClass}`}
+            >
+              {syncStatus === 'readonly' || syncStatus === 'error' ? <CloudOff size={14} /> : <Cloud size={14} />}
+              <span>{syncLabel}</span>
+              {syncing && <RefreshCw size={12} className="animate-spin" />}
+            </button>
             {alertCount > 0 && (
               <button
                 onClick={() => setPage('ton-kho')}
