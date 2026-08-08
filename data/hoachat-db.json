@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "savedAt": "2026-06-10T01:21:54.063Z",
+  "savedAt": "2026-08-08T09:42:01.687Z",
   "sourceRepository": "mrbit4578/hoachat",
   "hoaChat": [
     {
@@ -1298,7 +1298,46 @@
       "ghiChu": ""
     }
   ],
-  "phieuXuat": [],
+  "phieuXuat": [
+    {
+      "ngayXuat": "2026-07-03",
+      "soPhieuXuat": "YXK2607039930",
+      "boPhanXuat": "Phòng hóa chất",
+      "lyDo": "Cấp cho sản xuất",
+      "khoXuat": "Kho hóa chất",
+      "donHangMaHang": "AE2607172",
+      "maMau": "LC1783",
+      "lenhSX": "LVF260711",
+      "nguoiXuat": "",
+      "ghiChu": "",
+      "maVatTu": "009189",
+      "tenHoaChat": "BỘT KẼM OXIT K-AZO ADIDAS",
+      "lotNo": "20260401",
+      "soLuong": 100,
+      "donViTinh": "KG",
+      "hsd": "",
+      "id": "mr4fc39r5wh64zxu0xx"
+    },
+    {
+      "ngayXuat": "2026-07-03",
+      "soPhieuXuat": "YXK2607039930",
+      "boPhanXuat": "Phòng hóa chất",
+      "lyDo": "Cấp cho sản xuất",
+      "khoXuat": "Kho hóa chất",
+      "donHangMaHang": "AE2607172",
+      "maMau": "LC1783",
+      "lenhSX": "LVF260711",
+      "nguoiXuat": "",
+      "ghiChu": "",
+      "maVatTu": "009188",
+      "tenHoaChat": "Chất độn [Titan KA-100] ADIDAS",
+      "lotNo": "K6101-0231",
+      "soLuong": 200,
+      "donViTinh": "KG",
+      "hsd": "",
+      "id": "mr4fc39rmhn6o1y2dl"
+    }
+  ],
   "settings": {
     "tenNhaMay": "",
     "diaChi": "",
@@ -1308,6 +1347,9 @@
     "nguoiLap": "",
     "databaseRepo": "mrbit4578/hoachat",
     "databasePath": "data/hoachat-db.json",
-    "githubToken": ""
+    "githubToken": "",
+    "autoSyncEnabled": true,
+    "autoSyncIntervalSeconds": 10,
+    "databaseMaxBytes": 99614720
   }
 }
